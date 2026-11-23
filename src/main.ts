@@ -1,197 +1,258 @@
-import knightAscii from '../assets/sprites/characters/knight.ascii?raw';
-import { PaletteId } from './config/palettes';
-import { TUNING } from './config/tuning';
+import { InputManager } from './engine/input-manager';
+import { PlayerController } from './entities/player-controller';
+import { AsciiMatrixWorld } from './renderer/ascii-matrix';
 import { CrtEffect } from './renderer/crt-effect';
-import { CELL_FLAGS, GlyphGrid } from './renderer/glyph-grid';
-import { SpriteAnimator } from './sprites/sprite-animator';
-import { parseSprite } from './sprites/sprite-parser';
 
-// Setup canvas and grid
+// Canvas setup
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 
-const grid = new GlyphGrid({
-  cols: TUNING.GRID_COLS,
-  rows: TUNING.GRID_ROWS,
-  cellWidth: TUNING.CELL_WIDTH,
-  cellHeight: TUNING.CELL_HEIGHT,
-  fontFamily: 'ASCIIBladeMono',
-  paletteId: 'full',
-  useExtendedGlyphs: false,
-});
+// Screen & Grid metrics (High-density character grid)
+const CELL_W = 10;
+const CELL_H = 16;
+let viewCols = 100;
+let viewRows = 55;
 
+// World & Engine setup
+const WORLD_WIDTH = 120;
+const WORLD_HEIGHT = 80;
+const world = new AsciiMatrixWorld(WORLD_WIDTH, WORLD_HEIGHT);
+
+const player = new PlayerController(
+  Math.floor(WORLD_WIDTH / 2),
+  Math.floor(WORLD_HEIGHT / 2) + 6
+);
+
+const input = new InputManager();
 const crt = new CrtEffect();
 crt.enabled = true;
 
-// UI controls
-const btnPalette = document.getElementById('btn-palette') as HTMLButtonElement;
-const btnCrt = document.getElementById('btn-crt') as HTMLButtonElement;
-const btnExtended = document.getElementById('btn-extended') as HTMLButtonElement;
+// UI Elements
+const btnToggleTouch = document.getElementById('btn-toggle-touch') as HTMLButtonElement;
+const btnToggleCrt = document.getElementById('btn-toggle-crt') as HTMLButtonElement;
+const touchOverlay = document.getElementById('touch-overlay') as HTMLDivElement;
 
-const paletteList: PaletteId[] = ['full', 'amber', 'green', 'mono', 'colorblind'];
-let currentPaletteIdx = 0;
+let showTouchControls = true;
 
-btnPalette.addEventListener('click', () => {
-  currentPaletteIdx = (currentPaletteIdx + 1) % paletteList.length;
-  const pId = paletteList[currentPaletteIdx];
-  grid.setPalette(pId);
-  btnPalette.textContent = `PALETTE: ${pId.toUpperCase()}`;
+btnToggleTouch.addEventListener('click', () => {
+  showTouchControls = !showTouchControls;
+  touchOverlay.style.display = showTouchControls ? 'block' : 'none';
+  btnToggleTouch.textContent = `TOUCH UI: ${showTouchControls ? 'ON' : 'OFF'}`;
+  btnToggleTouch.classList.toggle('active', showTouchControls);
 });
 
-btnCrt.addEventListener('click', () => {
+btnToggleCrt.addEventListener('click', () => {
   crt.enabled = !crt.enabled;
-  btnCrt.textContent = `CRT: ${crt.enabled ? 'ON' : 'OFF'}`;
+  btnToggleCrt.textContent = `CRT: ${crt.enabled ? 'ON' : 'OFF'}`;
+  btnToggleCrt.classList.toggle('active', crt.enabled);
 });
 
-btnExtended.addEventListener('click', () => {
-  grid.useExtendedGlyphs = !grid.useExtendedGlyphs;
-  grid.forceFullRedraw = true;
-  btnExtended.textContent = `EXTENDED: ${grid.useExtendedGlyphs ? 'ON' : 'OFF'}`;
-});
+// Setup Touch Joystick
+const joystickZone = document.getElementById('joystick-zone') as HTMLDivElement;
+const joystickKnob = document.getElementById('joystick-knob') as HTMLDivElement;
+let isTouchingJoystick = false;
+let joystickStartPos = { x: 0, y: 0 };
+const MAX_JOYSTICK_RADIUS = 40;
 
-// Load Knight Sprite
-const parseResult = parseSprite(knightAscii, 'knight.ascii');
-let knightAnimator: SpriteAnimator | null = null;
-if (parseResult.sprite) {
-  knightAnimator = new SpriteAnimator(parseResult.sprite, 'run');
+function handleJoystickStart(clientX: number, clientY: number) {
+  isTouchingJoystick = true;
+  joystickStartPos = { x: clientX, y: clientY };
 }
 
-// Window resizing with aspect ratio preservation
+function handleJoystickMove(clientX: number, clientY: number) {
+  if (!isTouchingJoystick) return;
+  const dx = clientX - joystickStartPos.x;
+  const dy = clientY - joystickStartPos.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  let clampedDist = dist;
+  let angle = Math.atan2(dy, dx);
+  if (clampedDist > MAX_JOYSTICK_RADIUS) {
+    clampedDist = MAX_JOYSTICK_RADIUS;
+  }
+
+  const knobX = Math.cos(angle) * clampedDist;
+  const knobY = Math.sin(angle) * clampedDist;
+  joystickKnob.style.transform = `translate(${knobX}px, ${knobY}px)`;
+
+  const normX = knobX / MAX_JOYSTICK_RADIUS;
+  const normY = knobY / MAX_JOYSTICK_RADIUS;
+  input.setJoystickInput(normX, normY);
+}
+
+function handleJoystickEnd() {
+  isTouchingJoystick = false;
+  joystickKnob.style.transform = `translate(0px, 0px)`;
+  input.setJoystickInput(0, 0);
+}
+
+// Touch events for joystick
+joystickZone.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const touch = e.touches[0];
+  handleJoystickStart(touch.clientX, touch.clientY);
+});
+
+window.addEventListener('touchmove', (e) => {
+  if (!isTouchingJoystick) return;
+  for (let i = 0; i < e.touches.length; i++) {
+    const touch = e.touches[i];
+    handleJoystickMove(touch.clientX, touch.clientY);
+  }
+});
+
+window.addEventListener('touchend', () => handleJoystickEnd());
+window.addEventListener('touchcancel', () => handleJoystickEnd());
+
+// Mouse simulation of joystick for testing on desktop
+joystickZone.addEventListener('mousedown', (e) => {
+  handleJoystickStart(e.clientX, e.clientY);
+  const onMouseMove = (ev: MouseEvent) => handleJoystickMove(ev.clientX, ev.clientY);
+  const onMouseUp = () => {
+    handleJoystickEnd();
+    window.removeEventListener('mousemove', onMouseMove);
+    window.removeEventListener('mouseup', onMouseUp);
+  };
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
+});
+
+// Setup Touch Action Buttons
+const btnTouchAtk = document.getElementById('btn-touch-atk') as HTMLButtonElement;
+const btnTouchDash = document.getElementById('btn-touch-dash') as HTMLButtonElement;
+const btnTouchS1 = document.getElementById('btn-touch-s1') as HTMLButtonElement;
+const btnTouchS2 = document.getElementById('btn-touch-s2') as HTMLButtonElement;
+
+function bindTouchButton(btn: HTMLElement, action: 'atk' | 'dash' | 's1' | 's2') {
+  btn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    input.triggerTouchAction(action, true);
+  });
+  btn.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    input.triggerTouchAction(action, false);
+  });
+  btn.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    input.triggerTouchAction(action, true);
+  });
+  btn.addEventListener('mouseup', (e) => {
+    e.preventDefault();
+    input.triggerTouchAction(action, false);
+  });
+}
+
+bindTouchButton(btnTouchAtk, 'atk');
+bindTouchButton(btnTouchDash, 'dash');
+bindTouchButton(btnTouchS1, 's1');
+bindTouchButton(btnTouchS2, 's2');
+
+// Responsive Canvas Resize
 function handleResize() {
-  const targetWidth = TUNING.GRID_COLS * TUNING.CELL_WIDTH;
-  const targetHeight = TUNING.GRID_ROWS * TUNING.CELL_HEIGHT;
+  const w = window.innerWidth;
+  const h = window.innerHeight;
 
-  const windowW = window.innerWidth;
-  const windowH = window.innerHeight;
+  viewCols = Math.max(70, Math.floor(w / CELL_W));
+  viewRows = Math.max(40, Math.floor(h / CELL_H));
 
-  const scale = Math.min(windowW / targetWidth, windowH / targetHeight);
-  const displayW = Math.floor(targetWidth * scale);
-  const displayH = Math.floor(targetHeight * scale);
+  canvas.width = viewCols * CELL_W;
+  canvas.height = viewRows * CELL_H;
+  canvas.style.width = `${w}px`;
+  canvas.style.height = `${h}px`;
 
-  canvas.width = targetWidth;
-  canvas.height = targetHeight;
-  canvas.style.width = `${displayW}px`;
-  canvas.style.height = `${displayH}px`;
-
-  crt.resize(targetWidth, targetHeight);
-  grid.forceFullRedraw = true;
+  input.setCanvasCenter(w / 2, h / 2);
+  crt.resize(canvas.width, canvas.height);
 }
 
 window.addEventListener('resize', handleResize);
 handleResize();
 
-// Game loop state
+// Game Loop
 let lastTime = performance.now();
+const TARGET_DT = 1000 / 60; // 60 FPS fixed step
 let accumulator = 0;
-let frameCount = 0;
-let fps = 60;
-let lastFpsUpdate = performance.now();
-
-// Preview animation sequencer for Knight
-const previewAnims = ['idle', 'run', 'attack1', 'attack2', 'attack3', 'heavy_charge', 'heavy_release', 'dodge', 'block'];
-let currentAnimIdx = 1;
-let animTimer = 0;
 
 function update(dt: number) {
-  // Cycle preview animations every 120 frames (2 seconds)
-  animTimer += dt;
-  if (animTimer >= 2000) {
-    animTimer = 0;
-    currentAnimIdx = (currentAnimIdx + 1) % previewAnims.length;
-    if (knightAnimator) {
-      knightAnimator.play(previewAnims[currentAnimIdx], true);
-    }
-  }
-
-  if (knightAnimator) {
-    knightAnimator.update();
-  }
+  input.update();
+  world.update(dt);
+  player.update(input.state, world);
+  input.endFrame();
 }
 
-function draw() {
-  grid.clear('transparent');
+function render() {
+  // Clear canvas
+  ctx.fillStyle = '#030712';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Outer Screen Border
-  grid.drawBox(0, 0, TUNING.GRID_COLS, TUNING.GRID_ROWS, 'K', 'transparent', ' ASCIIBLADE // ENGINE STAGE 1 ');
+  ctx.font = `${CELL_H - 2}px 'ASCIIBladeMono', monospace`;
+  ctx.textBaseline = 'top';
 
-  // Big ASCII Logo in Center
-  const logo = [
-    '   _   ____   ____ ___ ___ ____  _        _    ____  _____ ',
-    '  / \\ / ___| / ___|_ _|_ _| __ )| |      / \\  |  _ \\| ____|',
-    ' / _ \\\\___ \\| |    | | | ||  _ \\| |     / _ \\ | | | |  _|  ',
-    '/ ___ \\___) | |___ | | | || |_) | |___ / ___ \\| |_| | |___ ',
-    '/_/   \\_\\____/ \\____|___|___|____/|_____/_/   \\_\\____/|_____|',
-  ];
+  // Camera follows player
+  const camX = Math.round(player.x - viewCols / 2);
+  const camY = Math.round(player.y - viewRows / 2);
 
-  const logoY = 4;
-  for (let r = 0; r < logo.length; r++) {
-    const text = logo[r];
-    const x = Math.floor((TUNING.GRID_COLS - text.length) / 2);
-    grid.drawString(x, logoY + r, text, 'G', 'transparent', CELL_FLAGS.BOLD);
-  }
+  // Render High-Density ASCII Matrix
+  for (let r = 0; r < viewRows; r++) {
+    const worldY = camY + r;
+    const screenY = r * CELL_H;
 
-  grid.drawString(
-    Math.floor(TUNING.GRID_COLS / 2) - 30,
-    10,
-    'A PURE ASCII HACK-AND-SLASH ACTION ROGUELITE - ZERO EXTERNAL ART ASSETS',
-    'Y'
-  );
+    for (let c = 0; c < viewCols; c++) {
+      const worldX = camX + c;
+      const screenX = c * CELL_W;
 
-  // Status & Telemetry Box
-  grid.drawBox(10, 13, 60, 28, 'B', 'D', ' ENGINE TELEMETRY ');
-  grid.drawString(13, 16, `SCREEN RESOLUTION : ${TUNING.GRID_COLS} x ${TUNING.GRID_ROWS} Monospace Cells`, 'W');
-  grid.drawString(13, 18, `TARGET TIMESTEP   : 60 FPS Fixed (16.66 ms)`, 'W');
-  grid.drawString(13, 20, `ACTIVE PALETTE    : ${grid.palette.name}`, 'G');
-  grid.drawString(13, 22, `CRT SCANLINES     : ${crt.enabled ? 'ENABLED' : 'DISABLED'}`, 'C');
-  grid.drawString(13, 24, `EXTENDED GLYPHS   : ${grid.useExtendedGlyphs ? 'BOX-DRAWING ON' : 'STRICT ASCII (0x20-0x7E)'}`, 'O');
-  grid.drawString(13, 26, `ACTIVE FPS        : ${fps.toFixed(1)}`, 'E');
+      const cell = world.evaluateCell(worldX, worldY);
 
-  // Mock HUD Components
-  grid.drawString(13, 29, `MOCK PLAYER HUD:`, 'Y', 'transparent', CELL_FLAGS.BOLD);
-  grid.drawString(13, 31, `HP `, 'R');
-  grid.drawProgressBar(17, 31, 30, 95, 120, 'R', 'K');
-  grid.drawString(49, 31, `95/120`, 'W');
-
-  grid.drawString(13, 33, `STA`, 'G');
-  grid.drawProgressBar(17, 33, 30, 80, 100, 'G', 'K');
-  grid.drawString(49, 33, `80/100`, 'W');
-
-  grid.drawString(13, 35, `COMBO: 14 HITS [x2.5 DMG]`, 'O', 'transparent', CELL_FLAGS.BOLD);
-  grid.drawString(13, 37, `PRESS [OPEN SPRITE LAB] TO INSPECT SPRITES & LIVE EDIT`, 'C');
-
-  // Sprite Preview Box
-  grid.drawBox(74, 13, 76, 28, 'P', 'D', ' SPRITE ENGINE PREVIEW: KNIGHT ');
-  grid.drawString(77, 16, `SPRITE NAME : Knight (Player Character)`, 'W');
-  grid.drawString(77, 18, `DIMENSIONS  : 9 cols x 7 rows | Anchor: (4, 6)`, 'W');
-  grid.drawString(77, 20, `ANIMATION   : ${previewAnims[currentAnimIdx]}`, 'Y', 'transparent', CELL_FLAGS.BOLD);
-
-  // Render Knight Preview Sprite
-  if (knightAnimator) {
-    const frame = knightAnimator.getCurrentFrame();
-    if (frame) {
-      // Draw normal facing
-      grid.drawSprite(90, 24, frame, false);
-      grid.drawString(88, 32, '[FACING RIGHT]', 'K');
-
-      // Draw flipped facing
-      grid.drawSprite(115, 24, frame, true);
-      grid.drawString(113, 32, '[FACING LEFT]', 'K');
-
-      // Draw hit-flash preview
-      grid.drawSprite(135, 24, frame, false, undefined, true);
-      grid.drawString(132, 32, '[HIT-FLASH]', 'K');
+      if (cell.char !== ' ') {
+        ctx.fillStyle = cell.fgColor;
+        ctx.fillText(cell.char, screenX + 1, screenY + 1);
+      }
     }
   }
 
-  // Bottom Instructions & Controls
-  grid.drawBox(10, 42, 140, 3, 'K', 'transparent');
-  grid.drawString(13, 42, `[STAGE 1 VERIFICATION READY] - Monospace Glyph Grid, Color Palettes, Sprite Lab & Linter`, 'E', 'transparent', CELL_FLAGS.BOLD);
+  // Render Player & Slash Arcs into Screen Grid
+  player.render((worldX, worldY, char, fgColor) => {
+    const screenCol = worldX - camX;
+    const screenRow = worldY - camY;
 
-  // Render to canvas
-  grid.renderToCanvas(ctx);
+    if (
+      screenCol >= 0 &&
+      screenCol < viewCols &&
+      screenRow >= 0 &&
+      screenRow < viewRows
+    ) {
+      ctx.fillStyle = fgColor;
+      ctx.fillText(char, screenCol * CELL_W + 1, screenRow * CELL_H + 1);
+    }
+  });
 
-  // CRT Post-Processing
+  // Render Mini-HUD in Top-Left (ASCII Style)
+  renderHUD();
+
+  // CRT Scanlines & Glow
   crt.render(ctx, canvas.width, canvas.height);
+}
+
+function renderHUD() {
+  const hudX = 14;
+  const hudY = 38;
+
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+  ctx.fillRect(hudX - 6, hudY - 6, 220, 68);
+  ctx.strokeStyle = '#334155';
+  ctx.strokeRect(hudX - 6, hudY - 6, 220, 68);
+
+  ctx.fillStyle = '#EF4444';
+  ctx.fillText('HP  [############----] 120/150', hudX, hudY);
+
+  ctx.fillStyle = '#38BDF8';
+  ctx.fillText('STA [################] 100/100', hudX, hudY + 18);
+
+  ctx.fillStyle = '#F59E0B';
+  ctx.fillText(
+    `COMBO: ${player.comboCount > 0 ? player.comboCount + 'x SLASH' : 'READY'}`,
+    hudX,
+    hudY + 36
+  );
 }
 
 function gameLoop(now: number) {
@@ -201,24 +262,15 @@ function gameLoop(now: number) {
   lastTime = now;
   accumulator += delta;
 
-  // FPS calculation
-  frameCount++;
-  if (now - lastFpsUpdate >= 1000) {
-    fps = (frameCount * 1000) / (now - lastFpsUpdate);
-    frameCount = 0;
-    lastFpsUpdate = now;
+  while (accumulator >= TARGET_DT) {
+    update(TARGET_DT);
+    accumulator -= TARGET_DT;
   }
 
-  while (accumulator >= TUNING.TIME_STEP_MS) {
-    update(TUNING.TIME_STEP_MS);
-    accumulator -= TUNING.TIME_STEP_MS;
-  }
-
-  draw();
+  render();
 }
 
 requestAnimationFrame((now) => {
   lastTime = now;
-  lastFpsUpdate = now;
   gameLoop(now);
 });
