@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ASCIIBLADE</title>
+    <style>
+      @font-face {
+        font-family: 'ASCIIBladeMono';
+        src: url('/fonts/asciiblade-mono.ttf') format('truetype');
+        font-weight: normal;
+        font-style: normal;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background-color: #05070c;
+        color: #e2e8f0;
+        font-family: 'ASCIIBladeMono', monospace;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        overflow: hidden;
+        user-select: none;
+      }
+
+      #game-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100vw;
+        height: 100vh;
+      }
+
+      #game-canvas {
+        display: block;
+        image-rendering: pixelated;
+        box-shadow: 0 0 35px rgba(0, 0, 0, 0.95);
+      }
+
+      #overlay-ui {
+        position: absolute;
+        top: 10px;
+        right: 15px;
+        display: flex;
+        gap: 12px;
+        z-index: 100;
+        font-size: 13px;
+        background: rgba(10, 14, 23, 0.85);
+        padding: 6px 12px;
+        border: 1px solid #374151;
+        border-radius: 4px;
+        backdrop-filter: blur(4px);
+      }
+
+      #overlay-ui a {
+        color: #f59e0b;
+        text-decoration: none;
+        font-weight: bold;
+      }
+      #overlay-ui a:hover {
+        text-decoration: underline;
+      }
+
+      .btn-pill {
+        background: #1f2937;
+        color: #d1d5db;
+        border: 1px solid #4b5563;
+        padding: 2px 8px;
+        border-radius: 3px;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 12px;
+      }
+      .btn-pill:hover {
+        background: #374151;
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game-wrapper">
+      <div id="overlay-ui">
+        <button id="btn-palette" class="btn-pill">PALETTE: FULL</button>
+        <button id="btn-crt" class="btn-pill">CRT: ON</button>
+        <button id="btn-extended" class="btn-pill">EXTENDED: OFF</button>
+        <a href="/lab.html" target="_blank">[ OPEN SPRITE LAB ]</a>
+      </div>
+      <canvas id="game-canvas"></canvas>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

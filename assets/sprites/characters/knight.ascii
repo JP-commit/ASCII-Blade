@@ -1,0 +1,634 @@
+# Knight Player Character
+NAME: Knight
+WIDTH: 9
+HEIGHT: 7
+ANCHOR: 4,6
+HURTBOX: 2,0,5,7
+
+ANIMATIONS:
+idle = frames:idle_0,idle_1 durations:20,20 loop:true
+run = frames:run_0,run_1,run_2,run_3 durations:6,6,6,6 loop:true
+jump = frames:jump_0 durations:10 loop:false
+fall = frames:fall_0 durations:10 loop:false
+attack1 = frames:atk1_0,atk1_1,atk1_2 durations:4,5,7 loop:false damage:1[5,1,4,4]
+attack2 = frames:atk2_0,atk2_1,atk2_2 durations:4,5,7 loop:false damage:1[4,0,5,5]
+attack3 = frames:atk3_0,atk3_1,atk3_2,atk3_3 durations:5,6,7,9 loop:false damage:2[3,0,6,6]*1.5
+heavy_charge = frames:hvy_chg_0,hvy_chg_1 durations:8,8 loop:true
+heavy_release = frames:hvy_rel_0,hvy_rel_1,hvy_rel_2 durations:5,6,10 loop:false damage:1[2,0,7,7]*2.0
+special = frames:spec_0,spec_1,spec_2 durations:5,6,10 loop:false damage:1[2,0,7,7]*2.2
+dodge = frames:dodge_0,dodge_1,dodge_2 durations:4,5,7 loop:false
+block = frames:block_0 durations:10 loop:true
+hurt = frames:hurt_0 durations:10 loop:false
+death = frames:death_0,death_1,death_2 durations:8,10,30 loop:false
+
+--- FRAME: idle_0
+GLYPHS:
+   _A_   
+  [o.o]  
+ <[#|#]-|
+  [#|#]  
+   / \   
+  /   \  
+ _\   /_ 
+COLORS:
+   GGG   
+  WWWWW  
+ BWWWWWTW
+  WWWWW  
+   BBB   
+  B   B  
+ WW   WW 
+
+--- FRAME: idle_1
+GLYPHS:
+   _A_   
+  [o.o]  
+ <[#|#]-|
+  [#|#]  
+   / \   
+  |   |  
+ _\   /_ 
+COLORS:
+   GGG   
+  WWWWW  
+ BWWWWWTW
+  WWWWW  
+   BBB   
+  B   B  
+ WW   WW 
+
+--- FRAME: run_0
+GLYPHS:
+   _A_   
+  [o.o]> 
+ <[#|#]\ 
+  [#|#] |
+   /  |  
+  /   /  
+ _\  /_  
+COLORS:
+   GGG   
+  WWWWWT 
+ BWWWWWW 
+  WWWWWT 
+   B  B  
+  B   B  
+ WW  WW  
+
+--- FRAME: run_1
+GLYPHS:
+   _A_   
+  [o.o]  
+ <[#|#]-|
+  [#|#]  
+   / \   
+  |   |  
+ _\   /_ 
+COLORS:
+   GGG   
+  WWWWW  
+ BWWWWWTW
+  WWWWW  
+   BBB   
+  B   B  
+ WW   WW 
+
+--- FRAME: run_2
+GLYPHS:
+   _A_   
+ <[o.o]  
+ /[#|#]> 
+| [#|#]  
+  |  \   
+  \   \  
+  _\  /_ 
+COLORS:
+   GGG   
+ TWWWWW  
+ WWWWWWT 
+T WWWWW  
+  B  B   
+  B   B  
+  WW  WW 
+
+--- FRAME: run_3
+GLYPHS:
+   _A_   
+  [o.o]  
+ <[#|#]-|
+  [#|#]  
+   / \   
+  |   |  
+ _\   /_ 
+COLORS:
+   GGG   
+  WWWWW  
+ BWWWWWTW
+  WWWWW  
+   BBB   
+  B   B  
+ WW   WW 
+
+--- FRAME: jump_0
+GLYPHS:
+   _A_   
+  [o.o]  
+ <[#|#]/ 
+  [#|#] |
+   / \   
+  /   \  
+ <_   _> 
+COLORS:
+   GGG   
+  WWWWW  
+ BWWWWWW 
+  WWWWWT 
+   BBB   
+  B   B  
+ WW   WW 
+
+--- FRAME: fall_0
+GLYPHS:
+   _A_   
+  [o.o]  
+ <[#|#]\ 
+  [#|#] |
+  | | |  
+  \ /    
+  v v    
+COLORS:
+   GGG   
+  WWWWW  
+ BWWWWWW 
+  WWWWWT 
+  B B B  
+  B B    
+  W W    
+
+--- FRAME: atk1_0
+GLYPHS:
+   _A_   
+  [o.o]  
+ <[#|#]  
+  [#|#]\ 
+   / \  \
+  /   \  
+ _\   /_ 
+COLORS:
+   GGG   
+  WWWWW  
+ BWWWWW  
+  WWWWWW 
+   BBB  T
+  B   B  
+ WW   WW 
+
+--- FRAME: atk1_1
+GLYPHS:
+   _A_   
+  [o.o]  
+ <[#|#]==
+  [#|#]  
+   / \   
+  /   \  
+ _\   /_ 
+COLORS:
+   GGG   
+  WWWWW  
+ BWWWWWTT
+  WWWWW  
+   BBB   
+  B   B  
+ WW   WW 
+
+--- FRAME: atk1_2
+GLYPHS:
+   _A_   
+  [o.o]  
+ <[#|#]-/
+  [#|#]  
+   / \   
+  /   \  
+ _\   /_ 
+COLORS:
+   GGG   
+  WWWWW  
+ BWWWWWTW
+  WWWWW  
+   BBB   
+  B   B  
+ WW   WW 
+
+--- FRAME: atk2_0
+GLYPHS:
+   _A_   
+  [o.o]/ 
+ <[#|#]| 
+  [#|#]  
+   / \   
+  /   \  
+ _\   /_ 
+COLORS:
+   GGG   
+  WWWWWT 
+ BWWWWWT 
+  WWWWW  
+   BBB   
+  B   B  
+ WW   WW 
+
+--- FRAME: atk2_1
+GLYPHS:
+   _A_   
+  [o.o]  
+ <[#|#]--
+  [#|#] >
+   / \   
+  /   \  
+ _\   /_ 
+COLORS:
+   GGG   
+  WWWWW  
+ BWWWWWTT
+  WWWWWT 
+   BBB   
+  B   B  
+ WW   WW 
+
+--- FRAME: atk2_2
+GLYPHS:
+   _A_   
+  [o.o]  
+ <[#|#]\ 
+  [#|#] \
+   / \   
+  /   \  
+ _\   /_ 
+COLORS:
+   GGG   
+  WWWWW  
+ BWWWWWT 
+  WWWWWT 
+   BBB   
+  B   B  
+ WW   WW 
+
+--- FRAME: atk3_0
+GLYPHS:
+   _A_ | 
+  [o.o]| 
+ <[#|#]/ 
+  [#|#]  
+   / \   
+  /   \  
+ _\   /_ 
+COLORS:
+   GGG T 
+  WWWWWT 
+ BWWWWWW 
+  WWWWW  
+   BBB   
+  B   B  
+ WW   WW 
+
+--- FRAME: atk3_1
+GLYPHS:
+   _A_/  
+  [o.o]  
+ <[#|#]  
+  [#|#]  
+   / \   
+  /   \  
+ _\   /_ 
+COLORS:
+   GGGT  
+  WWWWW  
+ BWWWWW  
+  WWWWW  
+   BBB   
+  B   B  
+ WW   WW 
+
+--- FRAME: atk3_2
+GLYPHS:
+   _A_   
+  [o.o]  
+ <[#|#]--
+  [#|#] =
+   / \  >
+  /   \  
+ _\   /_ 
+COLORS:
+   GGG   
+  WWWWW  
+ BWWWWWTT
+  WWWWWT 
+   BBB  T
+  B   B  
+ WW   WW 
+
+--- FRAME: atk3_3
+GLYPHS:
+   _A_   
+  [o.o]  
+ <[#|#]  
+  [#|#]\ 
+   / \  \
+  /   \  
+ _\   /_ 
+COLORS:
+   GGG   
+  WWWWW  
+ BWWWWW  
+  WWWWWT 
+   BBB  T
+  B   B  
+ WW   WW 
+
+--- FRAME: hvy_chg_0
+GLYPHS:
+ * _A_ * 
+  [o.o]  
+ <[#|#]  
+  [#|#]\ 
+   / \  \
+  /   \  
+ _\   /_ 
+COLORS:
+ Y GGG Y 
+  WWWWW  
+ BWWWWW  
+  WWWWWW 
+   BBB  T
+  B   B  
+ WW   WW 
+
+--- FRAME: hvy_chg_1
+GLYPHS:
+ . _A_ . 
+  [o.o]  
+ <[#|#]  
+  [#|#]\ 
+   / \  \
+  /   \  
+ _\   /_ 
+COLORS:
+ O GGG O 
+  WWWWW  
+ BWWWWW  
+  WWWWWW 
+   BBB  T
+  B   B  
+ WW   WW 
+
+--- FRAME: hvy_rel_0
+GLYPHS:
+   _A_   
+  [o.o]  
+ <[#|#]/|
+  [#|#]  
+   / \   
+  /   \  
+ _\   /_ 
+COLORS:
+   GGG   
+  WWWWW  
+ BWWWWWTW
+  WWWWW  
+   BBB   
+  B   B  
+ WW   WW 
+
+--- FRAME: hvy_rel_1
+GLYPHS:
+   _A_   
+  [o.o]  
+ <[#|#]==
+  [#|#]==
+   / \   
+  /   \  
+ _\   /_ 
+COLORS:
+   GGG   
+  WWWWW  
+ BWWWWWTT
+  WWWWWTT
+   BBB   
+  B   B  
+ WW   WW 
+
+--- FRAME: hvy_rel_2
+GLYPHS:
+   _A_   
+  [o.o]  
+ <[#|#]--
+  [#|#]  
+   / \   
+  /   \  
+ _\   /_ 
+COLORS:
+   GGG   
+  WWWWW  
+ BWWWWWTW
+  WWWWW  
+   BBB   
+  B   B  
+ WW   WW 
+
+--- FRAME: spec_0
+GLYPHS:
+   _A_   
+  [o.o]  
+ <[#|#]  
+  [#|#]  
+   / \   
+  /   \  
+ _\   /_ 
+COLORS:
+   GGG   
+  WWWWW  
+ BWWWWW  
+  WWWWW  
+   BBB   
+  B   B  
+ WW   WW 
+
+--- FRAME: spec_1
+GLYPHS:
+   _A_ * 
+  [o.o]* 
+=[#|#]==
+  [#|#]  
+   / \   
+  /   \  
+ _\   /_ 
+COLORS:
+   GGG O 
+  WWWWWO 
+TWWWWWTT
+  WWWWW  
+   BBB   
+  B   B  
+ WW   WW 
+
+--- FRAME: spec_2
+GLYPHS:
+   _A_   
+  [o.o]  
+ <[#|#]  
+  [#|#]  
+   / \   
+  /   \  
+ _\   /_ 
+COLORS:
+   GGG   
+  WWWWW  
+ BWWWWW  
+  WWWWW  
+   BBB   
+  B   B  
+ WW   WW 
+
+--- FRAME: dodge_0
+GLYPHS:
+         
+   _A_   
+  [o.o]  
+ <[#|#]  
+  [#|#]  
+   / \   
+ _\   /_ 
+COLORS:
+         
+   GGG   
+  WWWWW  
+ BWWWWW  
+  WWWWW  
+   BBB   
+ WW   WW 
+
+--- FRAME: dodge_1
+GLYPHS:
+         
+         
+  .-A-.  
+ <[#|#]> 
+  (o.o)  
+   / \   
+  -- --  
+COLORS:
+         
+         
+  WGGGW  
+ BWWWWWB 
+  WWWWW  
+   BBB   
+  WW WW  
+
+--- FRAME: dodge_2
+GLYPHS:
+         
+         
+   _A_   
+  [o.o]  
+ <[#|#]-|
+  /   \  
+ _\   /_ 
+COLORS:
+         
+         
+   GGG   
+  WWWWW  
+ BWWWWWTW
+  B   B  
+ WW   WW 
+
+--- FRAME: block_0
+GLYPHS:
+   _A_   
+  [o.o]  
+ [|#|#]-|
+ [|#|#]  
+   / \   
+  |   |  
+ _\   /_ 
+COLORS:
+   GGG   
+  WWWWW  
+ BBWWWWWT
+ BBWWWW  
+   BBB   
+  B   B  
+ WW   WW 
+
+--- FRAME: hurt_0
+GLYPHS:
+   _A_   
+  (x.x)  
+ <[#|#]\ 
+  [#|#]  
+   / \   
+  (   )  
+ _/   \_ 
+COLORS:
+   RRR   
+  RRRRR  
+ BRRRRRR 
+  RRRRR  
+   RRR   
+  R   R  
+ RR   RR 
+
+--- FRAME: death_0
+GLYPHS:
+   _A_   
+  (x.x)  
+ <[#|#]  
+  [#|#]  
+   / \   
+ _/   \_ 
+         
+COLORS:
+   RRR   
+  RRRRR  
+ BRRRRR  
+  RRRRR  
+   RRR   
+ RR   RR 
+         
+
+--- FRAME: death_1
+GLYPHS:
+         
+   _A_   
+  (x.x)  
+ <[#|#]  
+ _\_ /_  
+         
+         
+COLORS:
+         
+   KKK   
+  KKKKK  
+ BKKKKK  
+ KKK KKK 
+         
+         
+
+--- FRAME: death_2
+GLYPHS:
+         
+         
+         
+  _._    
+ (x_x)\_ 
+ [###]==-
+         
+COLORS:
+         
+         
+         
+  KKK    
+ KKKKKKK 
+ KKKKKKTW
+         

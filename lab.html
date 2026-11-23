@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ASCIIBLADE - Sprite Lab</title>
+    <style>
+      @font-face {
+        font-family: 'ASCIIBladeMono';
+        src: url('/fonts/asciiblade-mono.ttf') format('truetype');
+        font-weight: normal;
+        font-style: normal;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background-color: #0b0f19;
+        color: #e2e8f0;
+        font-family: 'ASCIIBladeMono', monospace;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      header {
+        background: #111827;
+        border-bottom: 2px solid #374151;
+        padding: 8px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      header h1 {
+        font-size: 18px;
+        letter-spacing: 2px;
+        color: #f59e0b;
+      }
+
+      .nav-links a {
+        color: #60a5fa;
+        text-decoration: none;
+        margin-left: 16px;
+        font-size: 14px;
+      }
+      .nav-links a:hover {
+        text-decoration: underline;
+      }
+
+      #lab-container {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      }
+
+      #viewport-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #030712;
+        position: relative;
+        padding: 20px;
+      }
+
+      #canvas-wrapper {
+        border: 2px solid #374151;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+        background: #000;
+        position: relative;
+      }
+
+      canvas {
+        display: block;
+        image-rendering: pixelated;
+      }
+
+      #controls-bar {
+        margin-top: 16px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        background: #1f2937;
+        padding: 8px 16px;
+        border-radius: 4px;
+        border: 1px solid #4b5563;
+      }
+
+      #sidebar-panel {
+        width: 480px;
+        background: #111827;
+        border-left: 2px solid #374151;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+      }
+
+      .panel-section {
+        padding: 14px 16px;
+        border-bottom: 1px solid #1f2937;
+      }
+
+      .panel-title {
+        font-size: 13px;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #9ca3af;
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .form-row {
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      label {
+        font-size: 13px;
+        color: #d1d5db;
+      }
+
+      select, input[type="text"], input[type="range"], button {
+        background: #1f2937;
+        color: #f3f4f6;
+        border: 1px solid #4b5563;
+        padding: 5px 10px;
+        font-family: inherit;
+        font-size: 13px;
+        border-radius: 3px;
+      }
+
+      button {
+        cursor: pointer;
+        background: #2563eb;
+        border-color: #3b82f6;
+      }
+      button:hover {
+        background: #1d4ed8;
+      }
+      button.secondary {
+        background: #374151;
+        border-color: #4b5563;
+      }
+      button.secondary:hover {
+        background: #4b5563;
+      }
+      button.active {
+        background: #d97706;
+        border-color: #f59e0b;
+      }
+
+      .editor-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      textarea {
+        background: #030712;
+        color: #10b981;
+        font-family: 'ASCIIBladeMono', monospace;
+        font-size: 14px;
+        line-height: 18px;
+        border: 1px solid #374151;
+        padding: 6px;
+        height: 180px;
+        white-space: pre;
+        overflow-x: auto;
+        resize: vertical;
+      }
+
+      #color-editor {
+        color: #f59e0b;
+      }
+
+      #status-log {
+        padding: 8px;
+        background: #030712;
+        border-top: 1px solid #374151;
+        font-size: 11px;
+        color: #10b981;
+        height: 48px;
+        overflow-y: auto;
+      }
+
+      .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>ASCIIBLADE // SPRITE LAB</h1>
+      <div class="nav-links">
+        <a href="/">[ Back to Game ]</a>
+      </div>
+    </header>
+
+    <div id="lab-container">
+      <div id="viewport-panel">
+        <div id="canvas-wrapper">
+          <canvas id="sprite-canvas"></canvas>
+        </div>
+
+        <div id="controls-bar">
+          <button id="btn-play" class="active">PAUSE</button>
+          <button id="btn-prev" class="secondary">&lt; PREV</button>
+          <span id="frame-counter">FRAME: 0 / 0</span>
+          <button id="btn-next" class="secondary">NEXT &gt;</button>
+          <label style="margin-left: 12px">SPEED:</label>
+          <input type="range" id="speed-slider" min="0.1" max="2" step="0.1" value="1" style="width: 80px;" />
+          <span id="speed-display">1.0x</span>
+        </div>
+      </div>
+
+      <div id="sidebar-panel">
+        <div class="panel-section">
+          <div class="panel-title">Asset & Animation</div>
+          <div class="form-row">
+            <label for="sprite-select">Sprite:</label>
+            <select id="sprite-select" style="width: 220px;"></select>
+          </div>
+          <div class="form-row">
+            <label for="anim-select">Animation:</label>
+            <select id="anim-select" style="width: 220px;"></select>
+          </div>
+          <div class="form-row">
+            <label for="palette-select">Palette:</label>
+            <select id="palette-select" style="width: 220px;"></select>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <div class="panel-title">Display & Overlays</div>
+          <div class="form-row">
+            <label class="checkbox-label">
+              <input type="checkbox" id="chk-grid" checked /> Show Cell Grid
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="chk-anchor" checked /> Show Anchor (+)
+            </label>
+          </div>
+          <div class="form-row">
+            <label class="checkbox-label">
+              <input type="checkbox" id="chk-hurtbox" checked /> Show Hurtbox
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="chk-hitbox" checked /> Show Hitbox
+            </label>
+          </div>
+          <div class="form-row">
+            <label class="checkbox-label">
+              <input type="checkbox" id="chk-flip" /> Flip Horizontal
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="chk-crt" checked /> CRT Effect
+            </label>
+          </div>
+          <div class="form-row">
+            <label for="zoom-select">Zoom:</label>
+            <select id="zoom-select" style="width: 100px;">
+              <option value="1">1x</option>
+              <option value="2">2x</option>
+              <option value="4" selected>4x</option>
+              <option value="6">6x</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="panel-section" style="flex: 1;">
+          <div class="panel-title">
+            <span>Live Frame Editor</span>
+            <span id="editor-frame-name">frame_0</span>
+          </div>
+          <div class="editor-grid">
+            <div>
+              <label style="font-size: 11px; color: #10b981;">GLYPHS (ASCII)</label>
+              <textarea id="glyph-editor" spellcheck="false"></textarea>
+            </div>
+            <div>
+              <label style="font-size: 11px; color: #f59e0b;">COLORS (MASK)</label>
+              <textarea id="color-editor" spellcheck="false"></textarea>
+            </div>
+          </div>
+          <div style="margin-top: 10px; display: flex; gap: 8px;">
+            <button id="btn-apply-frame" style="flex: 1;">Apply to Frame</button>
+            <button id="btn-export-ascii" class="secondary" style="flex: 1;">Copy Full .ascii</button>
+          </div>
+        </div>
+
+        <div id="status-log">Sprite Lab initialized. Select animation or step through frames.</div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/lab/lab-main.ts"></script>
+  </body>
+</html>
