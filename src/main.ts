@@ -1,5 +1,7 @@
 import { InputManager } from './engine/input-manager';
+import { ClassId } from './entities/classes';
 import { PlayerController } from './entities/player-controller';
+import { ProjectileSystem } from './entities/projectiles';
 import { AsciiMatrixWorld } from './renderer/ascii-matrix';
 import { CrtEffect } from './renderer/crt-effect';
 
@@ -20,12 +22,33 @@ const world = new AsciiMatrixWorld(WORLD_WIDTH, WORLD_HEIGHT);
 
 const player = new PlayerController(
   Math.floor(WORLD_WIDTH / 2),
-  Math.floor(WORLD_HEIGHT / 2) + 6
+  Math.floor(WORLD_HEIGHT / 2) + 6,
+  'swordsman'
 );
 
+const projSys = new ProjectileSystem();
 const input = new InputManager();
 const crt = new CrtEffect();
 crt.enabled = true;
+
+// Class Switching Buttons
+const classButtons: Record<ClassId, HTMLButtonElement> = {
+  swordsman: document.getElementById('btn-class-swordsman') as HTMLButtonElement,
+  archer: document.getElementById('btn-class-archer') as HTMLButtonElement,
+  tank: document.getElementById('btn-class-tank') as HTMLButtonElement,
+  magician: document.getElementById('btn-class-magician') as HTMLButtonElement,
+};
+
+function selectClass(classId: ClassId) {
+  player.switchClass(classId);
+  for (const [id, btn] of Object.entries(classButtons)) {
+    btn.classList.toggle('active', id === classId);
+  }
+}
+
+for (const [id, btn] of Object.entries(classButtons)) {
+  btn.addEventListener('click', () => selectClass(id as ClassId));
+}
 
 // UI Elements
 const btnToggleTouch = document.getElementById('btn-toggle-touch') as HTMLButtonElement;
@@ -66,7 +89,7 @@ function handleJoystickMove(clientX: number, clientY: number) {
   const dist = Math.sqrt(dx * dx + dy * dy);
 
   let clampedDist = dist;
-  let angle = Math.atan2(dy, dx);
+  const angle = Math.atan2(dy, dx);
   if (clampedDist > MAX_JOYSTICK_RADIUS) {
     clampedDist = MAX_JOYSTICK_RADIUS;
   }
@@ -122,8 +145,12 @@ const btnTouchAtk = document.getElementById('btn-touch-atk') as HTMLButtonElemen
 const btnTouchDash = document.getElementById('btn-touch-dash') as HTMLButtonElement;
 const btnTouchS1 = document.getElementById('btn-touch-s1') as HTMLButtonElement;
 const btnTouchS2 = document.getElementById('btn-touch-s2') as HTMLButtonElement;
+const btnTouchS3 = document.getElementById('btn-touch-s3') as HTMLButtonElement;
 
-function bindTouchButton(btn: HTMLElement, action: 'atk' | 'dash' | 's1' | 's2') {
+function bindTouchButton(
+  btn: HTMLElement,
+  action: 'atk' | 'dash' | 's1' | 's2' | 's3'
+) {
   btn.addEventListener('touchstart', (e) => {
     e.preventDefault();
     input.triggerTouchAction(action, true);
@@ -146,6 +173,7 @@ bindTouchButton(btnTouchAtk, 'atk');
 bindTouchButton(btnTouchDash, 'dash');
 bindTouchButton(btnTouchS1, 's1');
 bindTouchButton(btnTouchS2, 's2');
+bindTouchButton(btnTouchS3, 's3');
 
 // Responsive Canvas Resize
 function handleResize() {
@@ -175,7 +203,8 @@ let accumulator = 0;
 function update(dt: number) {
   input.update();
   world.update(dt);
-  player.update(input.state, world);
+  player.update(input.state, world, projSys);
+  projSys.update(world);
   input.endFrame();
 }
 
@@ -191,7 +220,7 @@ function render() {
   const camX = Math.round(player.x - viewCols / 2);
   const camY = Math.round(player.y - viewRows / 2);
 
-  // Render High-Density ASCII Matrix
+  // 1. Render High-Density ASCII Matrix
   for (let r = 0; r < viewRows; r++) {
     const worldY = camY + r;
     const screenY = r * CELL_H;
@@ -209,7 +238,23 @@ function render() {
     }
   }
 
-  // Render Player & Slash Arcs into Screen Grid
+  // 2. Render Projectiles & Area Effects
+  projSys.render((worldX, worldY, char, fgColor) => {
+    const screenCol = worldX - camX;
+    const screenRow = worldY - camY;
+
+    if (
+      screenCol >= 0 &&
+      screenCol < viewCols &&
+      screenRow >= 0 &&
+      screenRow < viewRows
+    ) {
+      ctx.fillStyle = fgColor;
+      ctx.fillText(char, screenCol * CELL_W + 1, screenRow * CELL_H + 1);
+    }
+  });
+
+  // 3. Render Player Silhouette & Slash Arcs into Screen Grid
   player.render((worldX, worldY, char, fgColor) => {
     const screenCol = worldX - camX;
     const screenRow = worldY - camY;
@@ -225,33 +270,80 @@ function render() {
     }
   });
 
-  // Render Mini-HUD in Top-Left (ASCII Style)
+  // 4. Render Rich ASCII HUD in Top-Left
   renderHUD();
 
-  // CRT Scanlines & Glow
+  // 5. CRT Scanlines & Glow
   crt.render(ctx, canvas.width, canvas.height);
 }
 
 function renderHUD() {
   const hudX = 14;
-  const hudY = 38;
+  const hudY = 46;
 
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
-  ctx.fillRect(hudX - 6, hudY - 6, 220, 68);
+  // Background Box
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+  ctx.fillRect(hudX - 6, hudY - 6, 260, 100);
   ctx.strokeStyle = '#334155';
-  ctx.strokeRect(hudX - 6, hudY - 6, 220, 68);
+  ctx.lineWidth = 1;
+  ctx.strokeRect(hudX - 6, hudY - 6, 260, 100);
 
+  // Class Name & Title
+  const cDef = player.currentClass;
+  ctx.fillStyle = cDef.color;
+  ctx.fillText(`JOB: [${cDef.name.toUpperCase()}] - ${cDef.title}`, hudX, hudY);
+
+  // HP Bar
+  const hpRatio = Math.max(0, player.hp / cDef.maxHp);
+  const hpFilled = Math.round(hpRatio * 16);
+  const hpBar = '[' + '#'.repeat(hpFilled) + '-'.repeat(16 - hpFilled) + ']';
   ctx.fillStyle = '#EF4444';
-  ctx.fillText('HP  [############----] 120/150', hudX, hudY);
-
-  ctx.fillStyle = '#38BDF8';
-  ctx.fillText('STA [################] 100/100', hudX, hudY + 18);
-
-  ctx.fillStyle = '#F59E0B';
   ctx.fillText(
-    `COMBO: ${player.comboCount > 0 ? player.comboCount + 'x SLASH' : 'READY'}`,
+    `HP  ${hpBar} ${Math.round(player.hp)}/${cDef.maxHp}`,
+    hudX,
+    hudY + 18
+  );
+
+  // Resource Bar
+  const resRatio = Math.max(0, player.resource / cDef.resourceMax);
+  const resFilled = Math.round(resRatio * 16);
+  const resBar = '[' + '#'.repeat(resFilled) + '-'.repeat(16 - resFilled) + ']';
+  ctx.fillStyle =
+    cDef.resourceName === 'MANA'
+      ? '#C084FC'
+      : cDef.resourceName === 'FOCUS'
+      ? '#34D399'
+      : cDef.resourceName === 'RAGE'
+      ? '#F97316'
+      : '#38BDF8';
+  ctx.fillText(
+    `${cDef.resourceName.padEnd(4, ' ')} ${resBar} ${Math.round(
+      player.resource
+    )}/${cDef.resourceMax}`,
     hudX,
     hudY + 36
+  );
+
+  // Skills & Cooldowns Cards
+  const skills = cDef.skills;
+  let skillText = '';
+  for (let i = 0; i < 3; i++) {
+    const s = skills[i];
+    const cd = player.skillCooldowns[i];
+    const cdSec = (cd / 60).toFixed(1);
+    const status = cd > 0 ? `${cdSec}s` : 'READY';
+    skillText += `[${s.key}:${s.name.slice(0, 5)} ${status}] `;
+  }
+
+  ctx.fillStyle = '#FBBF24';
+  ctx.fillText(skillText, hudX, hudY + 56);
+
+  // Combo Status
+  ctx.fillStyle = '#F59E0B';
+  ctx.fillText(
+    `COMBO: ${player.comboCount > 0 ? player.comboCount + 'x STRIKE' : 'READY'}`,
+    hudX,
+    hudY + 76
   );
 }
 

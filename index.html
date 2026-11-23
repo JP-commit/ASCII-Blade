@@ -210,6 +210,16 @@
         border-color: #fbbf24;
       }
 
+      #btn-touch-s3 {
+        bottom: 130px;
+        right: 65px;
+        width: 46px;
+        height: 46px;
+        font-size: 12px;
+        background: #ec4899;
+        border-color: #f472b6;
+      }
+
       #desktop-hints {
         position: absolute;
         bottom: 10px;
@@ -229,7 +239,13 @@
   <body>
     <div id="game-wrapper">
       <div id="top-bar">
-        <div class="hud-title">ASCIIBLADE // TOWER HIGH GROUND</div>
+        <div class="hud-title">ASCIIBLADE</div>
+        <div class="btn-group" id="class-select-group">
+          <button id="btn-class-swordsman" class="pill-btn active">SWORDSMAN</button>
+          <button id="btn-class-archer" class="pill-btn">ARCHER</button>
+          <button id="btn-class-tank" class="pill-btn">TANK</button>
+          <button id="btn-class-magician" class="pill-btn">MAGICIAN</button>
+        </div>
         <div class="btn-group">
           <button id="btn-toggle-touch" class="pill-btn">TOUCH UI: ON</button>
           <button id="btn-toggle-crt" class="pill-btn">CRT: ON</button>
@@ -252,6 +268,7 @@
           <button id="btn-touch-dash" class="touch-action-btn">DASH</button>
           <button id="btn-touch-s1" class="touch-action-btn">Q</button>
           <button id="btn-touch-s2" class="touch-action-btn">E</button>
+          <button id="btn-touch-s3" class="touch-action-btn">R</button>
         </div>
       </div>
 
