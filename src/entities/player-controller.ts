@@ -1,5 +1,6 @@
 import { InputState } from '../engine/input-manager';
 import { AsciiMatrixWorld } from '../renderer/ascii-matrix';
+import { CharacterModel } from './character-model';
 import { ClassDef, CLASSES, ClassId } from './classes';
 import { ProjectileSystem } from './projectiles';
 
@@ -20,6 +21,7 @@ export class PlayerController {
   vy: number = 0;
   aimAngle: number = 0;
 
+  model: CharacterModel = new CharacterModel();
   currentClass: ClassDef;
   hp: number;
   resource: number;
@@ -63,6 +65,25 @@ export class PlayerController {
     this.isAttacking = false;
     this.isShieldWallActive = false;
     this.isWhirlwindActive = false;
+
+    // Sync character model style with class
+    if (classId === 'swordsman') {
+      this.model.material = 'steel';
+      this.model.hasFlamingSword = true;
+      this.model.hasHaloCrown = true;
+    } else if (classId === 'archer') {
+      this.model.material = 'moonsteel';
+      this.model.hasFlamingSword = false;
+      this.model.hasHaloCrown = true;
+    } else if (classId === 'tank') {
+      this.model.material = 'gold';
+      this.model.hasFlamingSword = true;
+      this.model.hasHaloCrown = false;
+    } else if (classId === 'magician') {
+      this.model.material = 'nightglass';
+      this.model.hasFlamingSword = false;
+      this.model.hasHaloCrown = true;
+    }
   }
 
   update(
@@ -70,6 +91,8 @@ export class PlayerController {
     world: AsciiMatrixWorld,
     projSys: ProjectileSystem
   ) {
+    this.model.update(16.66);
+
     // Regenerate Class Resource
     this.resource = Math.min(
       this.currentClass.resourceMax,
@@ -518,40 +541,20 @@ export class PlayerController {
     const px = Math.round(this.x);
     const py = Math.round(this.y);
 
-    const cDef = this.currentClass;
-    let head = cDef.headGlyph;
-    let body = cDef.bodyGlyph;
-    let leg = cDef.legGlyph;
+    // 1. Render Proportional High-Fidelity Character Model & Glowing Weapon
+    this.model.render(px, py, renderCell);
 
-    const playerColor = this.isDashing ? '#FFFFFF' : cDef.color;
-
-    // Shield Wall Aura
+    // 2. Shield Wall Aura
     if (this.isShieldWallActive) {
-      renderCell(px - 3, py - 1, '[', '#FBBF24');
-      renderCell(px - 3, py, '[', '#FBBF24');
-      renderCell(px - 3, py + 1, '[', '#FBBF24');
-      renderCell(px + 3, py - 1, ']', '#FBBF24');
-      renderCell(px + 3, py, ']', '#FBBF24');
-      renderCell(px + 3, py + 1, ']', '#FBBF24');
+      renderCell(px - 10, py - 6, '[', '#FBBF24');
+      renderCell(px - 10, py,     '[', '#FBBF24');
+      renderCell(px - 10, py + 6, '[', '#FBBF24');
+      renderCell(px + 10, py - 6, ']', '#FBBF24');
+      renderCell(px + 10, py,     ']', '#FBBF24');
+      renderCell(px + 10, py + 6, ']', '#FBBF24');
     }
 
-    // Head
-    for (let c = 0; c < head.length; c++) {
-      const char = head[c];
-      if (char !== ' ') renderCell(px - 1 + c, py - 1, char, '#FDE047');
-    }
-    // Body / Armor
-    for (let c = 0; c < body.length; c++) {
-      const char = body[c];
-      if (char !== ' ') renderCell(px - 2 + c, py, char, playerColor);
-    }
-    // Legs
-    for (let c = 0; c < leg.length; c++) {
-      const char = leg[c];
-      if (char !== ' ') renderCell(px - 2 + c, py + 1, char, '#94A3B8');
-    }
-
-    // Render active slash arcs
+    // 3. Render active slash arcs
     for (const slash of this.slashes) {
       const color = slash.color || '#FBBF24';
       for (let p = -3; p <= 3; p++) {

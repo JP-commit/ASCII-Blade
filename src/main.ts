@@ -1,9 +1,13 @@
+import { CombatSystem } from './combat/combat-system';
+import { SynthAudio } from './engine/audio/synth-audio';
 import { InputManager } from './engine/input-manager';
 import { ClassId } from './entities/classes';
+import { WaveSpawner } from './entities/enemies/wave-spawner';
 import { PlayerController } from './entities/player-controller';
 import { ProjectileSystem } from './entities/projectiles';
 import { AsciiMatrixWorld } from './renderer/ascii-matrix';
 import { CrtEffect } from './renderer/crt-effect';
+import { CharacterStudio } from './ui/character-studio';
 
 // Canvas setup
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
@@ -26,10 +30,44 @@ const player = new PlayerController(
   'swordsman'
 );
 
+const studio = new CharacterStudio(player.model);
 const projSys = new ProjectileSystem();
+const combat = new CombatSystem();
+const audio = new SynthAudio();
+const spawner = new WaveSpawner();
 const input = new InputManager();
 const crt = new CrtEffect();
 crt.enabled = true;
+
+// Start Wave 1
+spawner.startWave(1, world);
+
+// Studio Button & Keybindings
+const btnToggleStudio = document.getElementById('btn-toggle-studio') as HTMLButtonElement;
+btnToggleStudio.addEventListener('click', () => {
+  studio.toggle();
+  btnToggleStudio.classList.toggle('active', studio.isOpen);
+});
+
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyC') {
+    studio.toggle();
+    btnToggleStudio.classList.toggle('active', studio.isOpen);
+  } else if (studio.isOpen) {
+    if (e.code === 'Escape') {
+      studio.isOpen = false;
+      btnToggleStudio.classList.remove('active');
+    } else if (e.code === 'Digit1') studio.setMaterial('steel');
+    else if (e.code === 'Digit2') studio.setMaterial('moonsteel');
+    else if (e.code === 'Digit3') studio.setMaterial('gold');
+    else if (e.code === 'Digit4') studio.setMaterial('bronze');
+    else if (e.code === 'Digit5') studio.setMaterial('bloodiron');
+    else if (e.code === 'Digit6') studio.setMaterial('emberstone');
+    else if (e.code === 'Digit7') studio.setMaterial('nightglass');
+    else if (e.code === 'KeyF') studio.toggleSword();
+    else if (e.code === 'KeyH') studio.toggleHalo();
+  }
+});
 
 // Class Switching Buttons
 const classButtons: Record<ClassId, HTMLButtonElement> = {
@@ -53,6 +91,7 @@ for (const [id, btn] of Object.entries(classButtons)) {
 // UI Elements
 const btnToggleTouch = document.getElementById('btn-toggle-touch') as HTMLButtonElement;
 const btnToggleCrt = document.getElementById('btn-toggle-crt') as HTMLButtonElement;
+const btnToggleAudio = document.getElementById('btn-toggle-audio') as HTMLButtonElement;
 const touchOverlay = document.getElementById('touch-overlay') as HTMLDivElement;
 
 let showTouchControls = true;
@@ -68,6 +107,12 @@ btnToggleCrt.addEventListener('click', () => {
   crt.enabled = !crt.enabled;
   btnToggleCrt.textContent = `CRT: ${crt.enabled ? 'ON' : 'OFF'}`;
   btnToggleCrt.classList.toggle('active', crt.enabled);
+});
+
+btnToggleAudio.addEventListener('click', () => {
+  audio.enabled = !audio.enabled;
+  btnToggleAudio.textContent = `AUDIO: ${audio.enabled ? 'ON' : 'OFF'}`;
+  btnToggleAudio.classList.toggle('active', audio.enabled);
 });
 
 // Setup Touch Joystick
@@ -109,7 +154,6 @@ function handleJoystickEnd() {
   input.setJoystickInput(0, 0);
 }
 
-// Touch events for joystick
 joystickZone.addEventListener('touchstart', (e) => {
   e.preventDefault();
   const touch = e.touches[0];
@@ -127,7 +171,6 @@ window.addEventListener('touchmove', (e) => {
 window.addEventListener('touchend', () => handleJoystickEnd());
 window.addEventListener('touchcancel', () => handleJoystickEnd());
 
-// Mouse simulation of joystick for testing on desktop
 joystickZone.addEventListener('mousedown', (e) => {
   handleJoystickStart(e.clientX, e.clientY);
   const onMouseMove = (ev: MouseEvent) => handleJoystickMove(ev.clientX, ev.clientY);
@@ -175,6 +218,17 @@ bindTouchButton(btnTouchS1, 's1');
 bindTouchButton(btnTouchS2, 's2');
 bindTouchButton(btnTouchS3, 's3');
 
+// Sound triggers on attack/dash
+window.addEventListener('mousedown', () => {
+  if (player.currentClass.id === 'archer') audio.playArrowShoot();
+  else audio.playSlash();
+});
+btnTouchAtk.addEventListener('click', () => {
+  if (player.currentClass.id === 'archer') audio.playArrowShoot();
+  else audio.playSlash();
+});
+btnTouchDash.addEventListener('click', () => audio.playDash());
+
 // Responsive Canvas Resize
 function handleResize() {
   const w = window.innerWidth;
@@ -202,10 +256,104 @@ let accumulator = 0;
 
 function update(dt: number) {
   input.update();
-  world.update(dt);
-  player.update(input.state, world, projSys);
-  projSys.update(world);
+
+  const isFrozen = combat.update();
+  if (!isFrozen) {
+    world.update(dt);
+    player.update(input.state, world, projSys);
+    spawner.update(world);
+
+    // Update Enemies
+    for (const enemy of spawner.enemies) {
+      enemy.update(player, world, projSys, (type, x, y) =>
+        spawner.spawnMinion(type, x, y)
+      );
+    }
+
+    projSys.update(world);
+
+    // Collision & Combat Processing
+    processCombatInteractions();
+  }
+
   input.endFrame();
+}
+
+function processCombatInteractions() {
+  // 1. Check Player Slashes against Enemies
+  for (const slash of player.slashes) {
+    for (const enemy of spawner.enemies) {
+      if (enemy.state === 'dead') continue;
+
+      const dx = enemy.x - slash.x;
+      const dy = enemy.y - slash.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < slash.radius + 1.2) {
+        const isCrit = Math.random() < 0.25;
+        const baseDmg =
+          player.currentClass.id === 'tank'
+            ? 45
+            : player.currentClass.id === 'swordsman'
+            ? 35
+            : 25;
+        const finalDmg = isCrit ? Math.round(baseDmg * 2.2) : baseDmg;
+
+        const knockDirX = (dx / (dist || 1)) * 0.8;
+        const knockDirY = (dy / (dist || 1)) * 0.8;
+
+        const died = enemy.takeDamage(finalDmg, knockDirX, knockDirY);
+
+        combat.spawnFloatingText(enemy.x, enemy.y - 1, `${finalDmg}`, '#FFFFFF', isCrit);
+        combat.triggerHitStop(isCrit ? 5 : 3);
+        combat.triggerScreenShake(isCrit ? 2.5 : 1.2);
+
+        if (isCrit) audio.playCrit();
+        else audio.playHit();
+
+        if (died && enemy.isBoss) {
+          audio.playBossRoar();
+          combat.triggerScreenShake(4.0);
+        }
+      }
+    }
+  }
+
+  // 2. Check Projectiles against Enemies
+  for (let i = projSys.projectiles.length - 1; i >= 0; i--) {
+    const p = projSys.projectiles[i];
+
+    for (const enemy of spawner.enemies) {
+      if (enemy.state === 'dead') continue;
+
+      const dist = Math.hypot(enemy.x - p.x, enemy.y - p.y);
+      if (dist < p.radius + 1.0) {
+        const isCrit = Math.random() < 0.2;
+        const finalDmg = isCrit ? Math.round(p.damage * 2.0) : p.damage;
+
+        const died = enemy.takeDamage(finalDmg, p.vx * 0.4, p.vy * 0.4);
+
+        combat.spawnFloatingText(enemy.x, enemy.y - 1, `${finalDmg}`, p.color, isCrit);
+        combat.triggerHitStop(3);
+        combat.triggerScreenShake(1.5);
+
+        if (isCrit) audio.playCrit();
+        else audio.playHit();
+
+        if (died && enemy.isBoss) {
+          audio.playBossRoar();
+          combat.triggerScreenShake(4.0);
+        }
+
+        // Single target arrows expire on hit
+        if (p.type === 'arrow') {
+          world.lighting.removeLight(p.id);
+          projSys.projectiles.splice(i, 1);
+          break;
+        }
+      }
+    }
+  }
 }
 
 function render() {
@@ -216,9 +364,9 @@ function render() {
   ctx.font = `${CELL_H - 2}px 'ASCIIBladeMono', monospace`;
   ctx.textBaseline = 'top';
 
-  // Camera follows player
-  const camX = Math.round(player.x - viewCols / 2);
-  const camY = Math.round(player.y - viewRows / 2);
+  // Camera follows player with screen shake offset
+  const camX = Math.round(player.x - viewCols / 2 + combat.shakeX);
+  const camY = Math.round(player.y - viewRows / 2 + combat.shakeY);
 
   // 1. Render High-Density ASCII Matrix
   for (let r = 0; r < viewRows; r++) {
@@ -254,7 +402,25 @@ function render() {
     }
   });
 
-  // 3. Render Player Silhouette & Slash Arcs into Screen Grid
+  // 3. Render Enemies
+  for (const enemy of spawner.enemies) {
+    enemy.render((worldX, worldY, char, fgColor) => {
+      const screenCol = worldX - camX;
+      const screenRow = worldY - camY;
+
+      if (
+        screenCol >= 0 &&
+        screenCol < viewCols &&
+        screenRow >= 0 &&
+        screenRow < viewRows
+      ) {
+        ctx.fillStyle = fgColor;
+        ctx.fillText(char, screenCol * CELL_W + 1, screenRow * CELL_H + 1);
+      }
+    });
+  }
+
+  // 4. Render Player Silhouette & Slash Arcs into Screen Grid
   player.render((worldX, worldY, char, fgColor) => {
     const screenCol = worldX - camX;
     const screenRow = worldY - camY;
@@ -270,10 +436,30 @@ function render() {
     }
   });
 
-  // 4. Render Rich ASCII HUD in Top-Left
+  // 5. Render Floating ASCII Damage Numbers
+  combat.renderFloatingTexts(camX, camY, viewCols, viewRows, (gx, gy, char, fgColor) => {
+    ctx.fillStyle = fgColor;
+    ctx.fillText(char, gx * CELL_W + 1, gy * CELL_H + 1);
+  });
+
+  // 6. Render Rich ASCII HUD in Top-Left & Boss Bar
   renderHUD();
 
-  // 5. CRT Scanlines & Glow
+  // 7. Render CRAFT · Look Character Studio Modal (if open)
+  if (studio.isOpen) {
+    studio.render(viewCols, viewRows, (gx, gy, char, fgColor, bgColor) => {
+      if (gx >= 0 && gx < viewCols && gy >= 0 && gy < viewRows) {
+        if (bgColor && bgColor !== 'transparent') {
+          ctx.fillStyle = bgColor;
+          ctx.fillRect(gx * CELL_W, gy * CELL_H, CELL_W, CELL_H);
+        }
+        ctx.fillStyle = fgColor;
+        ctx.fillText(char, gx * CELL_W + 1, gy * CELL_H + 1);
+      }
+    });
+  }
+
+  // 8. CRT Scanlines & Glow
   crt.render(ctx, canvas.width, canvas.height);
 }
 
@@ -283,10 +469,10 @@ function renderHUD() {
 
   // Background Box
   ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
-  ctx.fillRect(hudX - 6, hudY - 6, 260, 100);
+  ctx.fillRect(hudX - 6, hudY - 6, 265, 120);
   ctx.strokeStyle = '#334155';
   ctx.lineWidth = 1;
-  ctx.strokeRect(hudX - 6, hudY - 6, 260, 100);
+  ctx.strokeRect(hudX - 6, hudY - 6, 265, 120);
 
   // Class Name & Title
   const cDef = player.currentClass;
@@ -338,13 +524,47 @@ function renderHUD() {
   ctx.fillStyle = '#FBBF24';
   ctx.fillText(skillText, hudX, hudY + 56);
 
+  // Wave Status & Live Enemies Counter
+  const aliveEnemies = spawner.enemies.filter((e) => e.state !== 'dead').length;
+  ctx.fillStyle = '#10B981';
+  ctx.fillText(
+    `${spawner.getCurrentWaveName()} (${aliveEnemies} Alive)`,
+    hudX,
+    hudY + 76
+  );
+
   // Combo Status
   ctx.fillStyle = '#F59E0B';
   ctx.fillText(
     `COMBO: ${player.comboCount > 0 ? player.comboCount + 'x STRIKE' : 'READY'}`,
     hudX,
-    hudY + 76
+    hudY + 94
   );
+
+  // Boss Health Bar (Top Center)
+  const boss = spawner.getBoss();
+  if (boss) {
+    const bossW = 340;
+    const bossX = Math.floor((canvas.width - bossW) / 2);
+    const bossY = 46;
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+    ctx.fillRect(bossX - 6, bossY - 6, bossW + 12, 38);
+    ctx.strokeStyle = '#DC2626';
+    ctx.strokeRect(bossX - 6, bossY - 6, bossW + 12, 38);
+
+    const bRatio = Math.max(0, boss.hp / boss.maxHp);
+    const bFilled = Math.round(bRatio * 24);
+    const bBar = '[' + '#'.repeat(bFilled) + '-'.repeat(24 - bFilled) + ']';
+
+    ctx.fillStyle = '#EF4444';
+    ctx.fillText(
+      `BOSS: ${boss.name} (PHASE ${boss.bossPhase})`,
+      bossX,
+      bossY
+    );
+    ctx.fillText(`${bBar} ${boss.hp}/${boss.maxHp}`, bossX, bossY + 16);
+  }
 }
 
 function gameLoop(now: number) {
